@@ -119,7 +119,7 @@ class breakout_purchase(Strategy):
                             if (average_high+.33*md.stat.atr)<bar_close[0]:
                                 print('Purchasing {0} after breakout at {1}, purchased at {2}'\
                                       .format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
-                                order_id = order.algo_buy(self.symbol, algorithm=lime_midpoint_limit_buy, price=1.05*md[self.symbol].L1.ask, intent="init", order_quantity=100)
+                                order_id = order.algo_buy(self.symbol, algorithm=lime_midpoint_limit_buy, price=1.05*md[self.symbol].L1.ask, intent="init", order_quantity=1000)
                                 self.IsPositionOn=True
                             
             if service.system_time > self.model_start:
@@ -136,7 +136,7 @@ class breakout_purchase(Strategy):
                             if (average_low-.33*md.stat.atr)>bar_close[0]:
                                 print('Shorting {0} after low breakout at {1}, purchased at {2}'\
                                       .format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
-                                sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, intent="init", order_quantity=100)
+                                sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, intent="init", order_quantity=1000)
                                 self.IsShort=True
                             
         else:
