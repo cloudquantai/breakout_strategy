@@ -1,0 +1,161 @@
+#Nick Schmandt (n.schmandt@gmail.com), CloudQuant, 10/31/17
+
+from cloudquant.interfaces import Strategy
+from cloudquant.util import dt_from_muts
+import numpy as np
+
+lime_midpoint_limit_buy = "4e69745f-5410-446c-9f46-95ec77050aa5"
+lime_midpoint_limit_sell = "23d56e4a-ca4e-47d0-bf60-7d07da2038b7"
+
+#WARNING: Currently (10/16/17) running sentiment data with "Enable Fast Simulation" will crash. You must have that option unselected 
+#to run sentiment scripts.
+
+#you can only query sentiment data over long periods of time in on_start and on_strategy_start.
+
+#not all dates are available for all the different stock sentiment metrics. For example, stock twit data currently (10/16/17) only goes up to 8/25/17.
+
+#make sure you actually have access to the sentiment data you think you do: check for warning messages at the end of each script that sentiment
+#data may not have been available.
+
+
+#this value determines how long before market open to look and include sentiment data in the simulation.
+#17.5 hours should encompass all hours from prior market close to next market opening.
+sentiment_hours_prior=17.5
+
+end_delay = 20 # in minutes, how long before the end of the day to stop trading.
+start_delay = 15 # in minutes, how long after market open before we start trading
+
+index=25 # how many days of highs to average over
+
+class breakout_purchase(Strategy):
+    @classmethod
+    def is_symbol_qualified(cls, symbol, md, service, account):
+        
+        handle_list = service.symbol_list.get_handle('9a802d98-a2d7-4326-af64-cea18f8b5d61') #this is all stocks on S&P500
+        return service.symbol_list.in_list(handle_list,symbol)
+        
+        #return symbol=='AAPL'
+   
+        #the event stream function below is necessary to query sentiment data throughout the day.
+    
+    def __init__(self):  # , **params - if passing in parameters is desired
+
+        self.count = 0  # count of times that sentiment changes significantly
+        self.IsPositionOn = False  # do we have a position on?
+        self.LongQty = 0  # long quantity of our position
+        self.long_entry_price = 0  # estimated price of our position
+        self.filename = ''
+        #self.filename = 'TD_long_bvspread_' + service.time_to_string(service.system_time,'%Y-%m-%d') + '.txt'
+        self.sOutString=''
+        self.TradeStart = 0 #Time at which trade is initiated
+        self.volume = [] #array of volume data
+        self.model_start = 0
+        self.bb_array=[]
+        self.al_array=[]
+        self.st_array=[]
+        self.bb_value=0
+        self.al_value=0
+        self.st_value=0
+        self.IsShort=False
+    
+    def on_finish(self, md, order, service, account):
+        #print('end of day stock twit array')
+        #print(self.bb_array)
+        pass
+    
+    def on_minute_bar(self, event, md, order, service, account, bar):
+        
+        #make sure it's not too late in the day
+        if service.system_time < md.market_close_time - service.time_interval(minutes=end_delay, seconds=1):
+            
+            if self.IsPositionOn == True:
+                # there is a position on, therefore we want to check to see if
+                # we should realize a profit or stop a loss
+                md_daily=md.bar.daily(start=-index)
+                md_high=md_daily.high
+                average_high=np.mean(md_high)
+                
+                bar_1 = bar.minute()
+                bar_close = bar_1.close
+                
+                if len(bar_close)>0 and bar_close[0]!=0:
+                    if average_high>bar_close[0]:
+
+                        self.IsPositionOn = False
+                        # send order; use a variable to accept the order_id that order.algo_buy returns
+                        sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, intent="exit")
+                        print('selling out of {0} due to stock dropping below average high at {1}'.format(self.symbol, bar_close[0]))
+                        
+            if self.IsShort == True:
+                # there is a position on, therefore we want to check to see if
+                # we should realize a profit or stop a loss
+                md_daily=md.bar.daily(start=-index)
+                md_low=md_daily.low
+                average_low=np.mean(md_low)
+                
+                bar_1 = bar.minute()
+                bar_close = bar_1.close
+                
+                if len(bar_close)>0 and bar_close!=0:
+                    if average_low<bar_close[0]:
+
+                        self.IsShort = False
+                        # send order; use a variable to accept the order_id that order.algo_buy returns
+                        order_id = order.algo_buy(self.symbol, "market", intent="exit")
+                        print('exiting short of {0} due to dropping below average low at {1}'.format(self.symbol, bar_close[0]))
+
+            # we want to have at least a certain amount of time left before entering positions
+            if service.system_time > self.model_start:
+                bar_1 = bar.minute()
+                bar_close = bar_1.close
+                #print('current time {0}, start time {1}, {2} at {3}'.format(service.time_to_string(service.system_time), service.time_to_string(self.model_start), self.symbol, bar_close[0]))
+                if len(bar_close)>0 and bar_close[0]!=0:
+                    if self.IsPositionOn == False:
+                        if self.IsShort == False:
+                            md_daily=md.bar.daily(start=-index)
+                            md_high=md_daily.high
+                            average_high=np.mean(md_high)
+
+                            if (average_high+.33*md.stat.atr)<bar_close[0]:
+                                print('Purchasing {0} after breakout at {1}, purchased at {2}'\
+                                      .format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
+                                order_id = order.algo_buy(self.symbol, algorithm=lime_midpoint_limit_buy, price=1.05*md[self.symbol].L1.ask, intent="init", order_quantity=100)
+                                self.IsPositionOn=True
+                            
+            if service.system_time > self.model_start:
+                bar_1 = bar.minute()
+                bar_close = bar_1.close
+                #print('current time {0}, start time {1}, {2} at {3}'.format(service.time_to_string(service.system_time), service.time_to_string(self.model_start), self.symbol, bar_close[0]))
+                if len(bar_close)>0 and bar_close[0]!=0:
+                    if self.IsPositionOn == False:
+                        if self.IsShort == False:
+                            md_daily=md.bar.daily(start=-index)
+                            md_low=md_daily.low
+                            average_low=np.mean(md_low)
+
+                            if (average_low-.33*md.stat.atr)>bar_close[0]:
+                                print('Shorting {0} after low breakout at {1}, purchased at {2}'\
+                                      .format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
+                                sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, intent="init", order_quantity=100)
+                                self.IsShort=True
+                            
+        else:
+            
+            #print('current time {0}, market close time {1}'.format(service.time_to_string(service.system_time),service.time_to_string(md.market_close_time)))
+            # close out of our position at the end of the day 
+            if self.IsPositionOn == True:
+                sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, intent="exit")
+                self.IsPositionOn = False
+                bar_0 = bar.minute()
+                bar_low = bar_0.low
+                bar_close = bar_0.close
+                print('selling out of {0} at market end, price {1}'.format(self.symbol, bar_close[0]))
+                
+            if self.IsShort == True:
+                order_id = order.algo_buy(self.symbol, "market", intent="exit")
+                self.IsShort = False
+
+    def on_start(self, md, order, service, account):
+        
+        self.model_start = service.system_time + service.time_interval(minutes=start_delay, seconds=1)
+        
