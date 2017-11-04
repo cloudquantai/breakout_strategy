@@ -14,17 +14,17 @@ end_delay = 20 # in minutes, how long before the end of the day to stop trading.
 start_delay = 10 # in minutes, how long after market open before we start trading
 
 index=5 # how many days of highs to average over
-purchase_atr_ratio=.5 # what fraction of the atr for a stock to be bought/shorted
-sell_atr_ratio=1 # what fraction of the atr for a stock to be exited from
+purchase_atr_ratio=.33 # what fraction of the atr for a stock to be bought/shorted
+sell_atr_ratio=.66 # what fraction of the atr for a stock to be exited from
 
 class breakout_purchase(Strategy):
     @classmethod
     def is_symbol_qualified(cls, symbol, md, service, account):
         
-        #handle_list = service.symbol_list.get_handle('9a802d98-a2d7-4326-af64-cea18f8b5d61') #this is all stocks on S&P500
-        #return service.symbol_list.in_list(handle_list,symbol)
+        handle_list = service.symbol_list.get_handle('9a802d98-a2d7-4326-af64-cea18f8b5d61') #this is all stocks on S&P500
+        return service.symbol_list.in_list(handle_list,symbol)
         
-        return symbol in ['AAPL', 'EBAY', 'AMZN', 'ORCL', 'WMT']
+        #return symbol in ['AAPL', 'EBAY', 'AMZN', 'ORCL', 'WMT']
     
     def __init__(self):  
 
@@ -109,10 +109,6 @@ class breakout_purchase(Strategy):
 
                         # go long if stock is well above its normal values
                         if (average_high+purchase_atr_ratio*md.stat.atr)<bar_close[0]:
-                            print(self.symbol)
-                            print(average_high)
-                            print(md.stat.atr)
-                            print(bar_close[0])
                             print('Purchasing {0} after breakout at {1}, purchased at {2}'\
                                   .format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
                             order_id = order.algo_buy(self.symbol, algorithm=lime_midpoint_limit_buy, price=1.05*md[self.symbol].L1.ask, intent="init", order_quantity=1000)
@@ -121,10 +117,6 @@ class breakout_purchase(Strategy):
 
                         # short if the stock is well below its normal values
                         elif (average_low-purchase_atr_ratio*md.stat.atr)>bar_close[0]:
-                            print(self.symbol)
-                            print(average_high)
-                            print(md.stat.atr)
-                            print(bar_close[0])
                             print('Shorting {0} after low breakout at {1}, sold at {2}'\
                                   .format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
                             sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, intent="init", order_quantity=1000)
