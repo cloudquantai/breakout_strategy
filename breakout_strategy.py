@@ -67,7 +67,7 @@ class breakout_purchase(Strategy):
 
                         self.IsPositionOn = False
                         # send order; use a variable to accept the order_id that order.algo_buy returns
-                        sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, intent="exit")
+                        sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, price=md[self.symbol].L1.bid*.95, intent="exit")
                         print('selling out of {0} at {1} due to stock dropping below average high at {1}'.format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
                         self.IsPurchasable=False
 
@@ -76,7 +76,7 @@ class breakout_purchase(Strategy):
 
                         self.IsPositionOn = False
                         # send order; use a variable to accept the order_id that order.algo_buy returns
-                        sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, intent="exit")
+                        sell_order_id = order.algo_sell(self.symbol, algorithm=lime_midpoint_limit_sell, price=md[self.symbol].L1.bid*.95, intent="exit")
                         print('selling out of {0} at {1} due to stock reaching target profit at {2}'.format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
                         self.IsPurchasable=False
 
@@ -89,7 +89,7 @@ class breakout_purchase(Strategy):
 
                         self.IsShort = False
                         # send order; use a variable to accept the order_id that order.algo_buy returns
-                        order_id = order.algo_buy(self.symbol, algorithm=lime_midpoint_limit_sell, intent="exit")
+                        order_id = order.algo_buy(self.symbol, algorithm=lime_midpoint_limit_sell, price=md[self.symbol].L1.ask*1.05, intent="exit")
                         print('exiting short of {0} at {1} due to rising above average low at {2}'.format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
                         self.IsPurchasable=False
 
@@ -98,7 +98,7 @@ class breakout_purchase(Strategy):
 
                         self.IsShort = False
                         # send order; use a variable to accept the order_id that order.algo_buy returns
-                        order_id = order.algo_buy(self.symbol, algorithm=lime_midpoint_limit_sell, intent="exit")
+                        order_id = order.algo_buy(self.symbol, algorithm=lime_midpoint_limit_sell, price=md[self.symbol].L1.ask*1.05, intent="exit")
                         print('exiting short of {0} at {1} due to stock dropping below sell point at {2}'.format(self.symbol, service.time_to_string(service.system_time), bar_close[0]))
                         self.IsPurchasable=False
 
@@ -139,4 +139,4 @@ class breakout_purchase(Strategy):
         
         self.model_start = service.system_time + service.time_interval(minutes=start_delay, seconds=1)
         
-© 2017 GitHub, Inc.
+Â© 2017 GitHub, Inc.
